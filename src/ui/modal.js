@@ -110,12 +110,15 @@ const Modal = (() => {
   // ── Confirm / Save ─────────────────────────────────────────
 
   function saveTask() {
-    // In typed mode, first process whatever is in the textarea
+    // In typed mode, parse the textarea only when pendingTask doesn't already
+    // have a date (e.g. set by pickDate() just before calling saveTask()).
     const modeEl = document.getElementById('type-mode');
     if (modeEl && modeEl.style.display !== 'none') {
-      const raw = document.getElementById('task-input').value.trim();
-      if (!raw) { Toast.show('Type something first'); return; }
-      updateParsedPreview(raw);
+      if (!pendingTask || !pendingTask.date) {
+        const raw = document.getElementById('task-input').value.trim();
+        if (!raw) { Toast.show('Type something first'); return; }
+        updateParsedPreview(raw);
+      }
     }
 
     if (!pendingTask) { Toast.show('Type your task first'); return; }

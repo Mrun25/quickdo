@@ -11,20 +11,24 @@ const Voice = (() => {
   let recognition = null;
   let isListening = false;
   let finalTranscript = '';
+  let _hadError = false;
+
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   function _initRecognition() {
-    if (!('webkitSpeechRecognition' in window)) {
+    if (!SpeechRecognitionCtor) {
       console.warn('Speech recognition not supported in this environment.');
       return false;
     }
 
-    recognition = new webkitSpeechRecognition();
+    recognition = new SpeechRecognitionCtor();
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
     recognition.onstart = () => {
       isListening = true;
+      _hadError = false;
       _setTranscript('Listening…');
       document.getElementById('voice-indicator').classList.add('active');
     };
@@ -45,8 +49,15 @@ const Voice = (() => {
 
     recognition.onerror = (event) => {
       console.error('Speech recognition error', event.error);
-      _setTranscript('Error: ' + event.error);
-      stop();
+      _hadError = true;
+      isListening = false;
+      if (event.error === 'not-allowed') {
+        _setTranscript('Microphone access denied. Check browser permissions.');
+      } else if (event.error === 'no-speech') {
+        _setTranscript('No speech detected. Tap to try again.');
+      } else {
+        _setTranscript('Error: ' + event.error + '. Tap to retry.');
+      }
     };
 
     recognition.onend = () => {
@@ -54,7 +65,7 @@ const Voice = (() => {
       document.getElementById('voice-indicator').classList.remove('active');
       if (finalTranscript.trim()) {
         _onTranscriptComplete(finalTranscript.trim());
-      } else {
+      } else if (!_hadError) {
         _setTranscript('Tap to speak');
       }
     };
@@ -66,8 +77,11 @@ const Voice = (() => {
 
   function start() {
     if (isListening) return;
-    if (!recognition && !_initRecognition()) {
-      _setTranscript('Voice not supported.');
+    // Always reinitialise to avoid InvalidStateError after a previous session
+    recognition = null;
+    _hadError = false;
+    if (!_initRecognition()) {
+      _setTranscript('Voice not supported in this browser.');
       return;
     }
     
@@ -77,7 +91,8 @@ const Voice = (() => {
     try {
       recognition.start();
     } catch (e) {
-      console.error(e);
+      console.error('recognition.start() threw:', e);
+      _setTranscript('Could not start microphone. Tap to retry.');
     }
   }
 

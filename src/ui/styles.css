@@ -38,18 +38,25 @@ body {
 #pill {
   position: absolute;
   top: 0; left: 0;
-  width: 60px;
-  height: 60px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: rgba(22, 22, 30, 0.96);
-  border: 1px solid rgba(124, 106, 245, 0.4);
+  background: rgba(40, 40, 40, 0.92);
+  border: 1px solid rgba(120, 120, 120, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.6), 0 0 16px rgba(124,106,245,0.15);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
   transition: all 0.2s ease;
   -webkit-app-region: drag;
+}
+
+#pill:hover {
+  width: 14px;
+  height: 14px;
+  background: rgba(70, 70, 70, 0.95);
+  border-color: rgba(160, 160, 160, 0.6);
 }
 
 #app-root.expanded #pill {
@@ -59,16 +66,15 @@ body {
 }
 
 .pill-dot {
-  width: 24px;
-  height: 24px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c6af5, #a388fa);
-  box-shadow: 0 0 12px rgba(124, 106, 245, 0.5);
+  background: #707070;
   transition: transform 0.2s ease;
 }
 
 #pill:hover .pill-dot {
-  transform: scale(1.1);
+  transform: scale(1.2);
 }
 
 

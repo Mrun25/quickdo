@@ -28,6 +28,26 @@ const DateParser = (() => {
     'july','august','september','october','november','december'
   ];
 
+  // Ordinal words → day-of-month number (1–31)
+  const ORDINALS = {
+    first:1, second:2, third:3, fourth:4, fifth:5, sixth:6, seventh:7,
+    eighth:8, ninth:9, tenth:10, eleventh:11, twelfth:12, thirteenth:13,
+    fourteenth:14, fifteenth:15, sixteenth:16, seventeenth:17, eighteenth:18,
+    nineteenth:19, twentieth:20, 'twenty-first':21, 'twenty-second':22,
+    'twenty-third':23, 'twenty-fourth':24, 'twenty-fifth':25,
+    'twenty-sixth':26, 'twenty-seventh':27, 'twenty-eighth':28,
+    'twenty-ninth':29, thirtieth:30, 'thirty-first':31,
+  };
+
+  // Pre-compiled regex patterns for ordinal-word month parsing
+  const _ordinalKeys = Object.keys(ORDINALS).join('|');
+  const _ordinalOfMonthRx = new RegExp(
+    '\\b(?:the )?(' + _ordinalKeys + ')\\s+of\\s+(' + MONTHS.join('|') + ')\\b'
+  );
+  const _monthOrdinalRx = new RegExp(
+    '\\b(' + MONTHS.join('|') + ')\\s+(?:the )?(' + _ordinalKeys + ')\\b'
+  );
+
   /**
    * Find the next occurrence of a given weekday index (0–6)
    * strictly after `from` (or on it if allowSame=true).
@@ -151,6 +171,23 @@ const DateParser = (() => {
         date: d, label,
         clean: cleaned(raw, new RegExp('\\b' + monthDayMatch[1] + '\\s+\\d{1,2}(?:st|nd|rd|th)?\\b', 'gi')),
       };
+    }
+
+    // ── Ordinal-word month  e.g. "fifth of May" / "May fifth" ─
+    const ordOfMonthMatch = low.match(_ordinalOfMonthRx);
+    const monOrdMatch     = low.match(_monthOrdinalRx);
+    const ordMatch = ordOfMonthMatch || monOrdMatch;
+    if (ordMatch) {
+      const dayNum = ordOfMonthMatch
+        ? ORDINALS[ordMatch[1]]
+        : ORDINALS[ordMatch[2]];
+      const monthStr = ordOfMonthMatch ? ordMatch[2] : ordMatch[1];
+      const m = MONTHS.indexOf(monthStr);
+      let d = new Date(t.getFullYear(), m, dayNum);
+      if (d < t) d.setFullYear(d.getFullYear() + 1);
+      const label = monthStr.charAt(0).toUpperCase() + monthStr.slice(1) + ' ' + dayNum;
+      const cleanRx = ordOfMonthMatch ? _ordinalOfMonthRx : _monthOrdinalRx;
+      return { date: d, label, clean: cleaned(raw, cleanRx) };
     }
 
     // ── DD/MM  e.g. "15/06" ──────────────────────────────────
