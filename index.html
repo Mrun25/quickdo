@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickDo</title>
+  <link rel="stylesheet" href="src/ui/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <div id="app-root">
+
+    <!-- ── PILL (collapsed / idle state) ─────────────────── -->
+    <div id="pill" title="Hover to expand QuickDo">
+      <div class="pill-dot"></div>
+    </div>
+
+    <!-- ── PANEL (expanded state) ────────────────────────── -->
+    <div id="panel">
+
+      <!-- Panel header / drag handle -->
+      <div id="panel-header">
+        <div class="panel-brand">
+          <div class="brand-dot"></div>
+          <span class="brand-name">QuickDo</span>
+        </div>
+        <div class="panel-header-right">
+          <span id="stat-today" class="stat-chip">0 tasks today</span>
+          <button id="btn-collapse" title="Collapse to pill">—</button>
+        </div>
+      </div>
+
+      <!-- Input area (#input-modal keeps ID for modal.js compatibility) -->
+      <div id="input-modal" class="open">
+
+        <!-- Mode tabs -->
+        <div class="modal-mode-tabs">
+          <div class="mode-tab active" id="tab-type" data-mode="type">⌨ Typed</div>
+          <div class="mode-tab" id="tab-voice" data-mode="voice">🎤 Voice</div>
+        </div>
+
+        <!-- Typed mode -->
+        <div id="type-mode">
+          <textarea id="task-input"
+            placeholder="e.g. Submit report next Monday…"
+            rows="2"></textarea>
+        </div>
+
+        <!-- Voice mode -->
+        <div id="voice-mode" style="display:none">
+          <div class="voice-indicator" id="voice-indicator">
+            <div class="voice-dot"></div>
+            <div class="voice-waves">
+              <div class="voice-wave"></div>
+              <div class="voice-wave"></div>
+              <div class="voice-wave"></div>
+              <div class="voice-wave"></div>
+              <div class="voice-wave"></div>
+              <div class="voice-wave"></div>
+            </div>
+            <div class="voice-transcript" id="voice-transcript">Listening…</div>
+          </div>
+        </div>
+
+        <!-- Live parsed preview -->
+        <div id="parsed-preview">
+          <span class="parsed-task" id="parsed-task-text"></span>
+          <span class="parsed-date" id="parsed-date-text"></span>
+        </div>
+
+        <!-- Date ambiguity prompt -->
+        <div id="date-prompt">
+          <div class="date-prompt-label">When should this be scheduled?</div>
+          <div class="date-options">
+            <button class="date-opt-btn" data-pick="today">Today</button>
+            <button class="date-opt-btn" data-pick="tomorrow">Tomorrow</button>
+            <input type="date" class="date-opt-btn" id="custom-date-picker" style="cursor: pointer; font-family: inherit;" title="Pick a custom date" />
+          </div>
+        </div>
+
+        <!-- Modal actions -->
+        <div class="modal-actions">
+          <button class="btn btn-confirm" id="btn-save-task">Save ✓</button>
+          <button class="btn btn-cancel"  id="btn-cancel-modal">Cancel</button>
+        </div>
+
+      </div><!-- /#input-modal -->
+
+
+      <!-- Move date picker -->
+      <div id="move-picker">
+        <div class="move-opt" data-move="today">Today</div>
+        <div class="move-opt" data-move="tomorrow">Tomorrow</div>
+        <div class="move-opt" data-move="next_week">Next week</div>
+        <div class="move-opt" data-move="cancel_move">Cancel</div>
+      </div>
+
+      <div class="panel-divider"></div>
+
+      <!-- Calendar panel -->
+      <div id="calendar-panel">
+        <div id="cal-header">
+          <div class="cal-title">
+            Task Calendar
+            <span id="stat-total" class="total-badge">0</span>
+          </div>
+          <div class="cal-nav">
+            <button class="cal-nav-btn" id="cal-up">↑</button>
+            <button class="cal-nav-btn" id="cal-down">↓</button>
+          </div>
+        </div>
+        <div id="cal-body"></div>
+      </div>
+
+    </div><!-- /#panel -->
+
+  </div><!-- /#app-root -->
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Scripts — load order must be preserved -->
+  <script src="src/utils/toast.js"></script>
+  <script src="src/utils/dateUtils.js"></script>
+  <script src="src/core/dateParser.js"></script>
+  <script src="src/core/taskStore.js"></script>
+  <script src="src/ui/calendar.js"></script>
+  <script src="src/ui/modal.js"></script>
+  <script src="src/ui/voice.js"></script>
+  <script src="src/ui/bubble.js"></script>
+  <script src="src/core/app.js"></script>
+
+</body>
+</html>

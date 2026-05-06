@@ -1,0 +1,405 @@
+/**
+ * QuickDo — styles.css
+ * Redesigned for Pill HUD mode.
+ */
+
+:root {
+  --bg-dark:        #121216;
+  --bg-glass:       rgba(24, 24, 28, 0.85);
+  --bg-glass-hover: rgba(32, 32, 36, 0.95);
+  --border-light:   rgba(255, 255, 255, 0.1);
+  --text-main:      #f0f0f4;
+  --text-muted:     #8f8f9d;
+  --accent-purple:  #7c6af5;
+  --accent-hover:   #6555d1;
+  --danger:         #ff5252;
+  --success:        #2cd479;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-main);
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+#app-root {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+/* ── PILL (Collapsed State) ──────────────────────────────── */
+#pill {
+  position: absolute;
+  top: 0; left: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(22, 22, 30, 0.96);
+  border: 1px solid rgba(124, 106, 245, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6), 0 0 16px rgba(124,106,245,0.15);
+  transition: all 0.2s ease;
+  -webkit-app-region: drag;
+}
+
+#app-root.expanded #pill {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8);
+}
+
+.pill-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c6af5, #a388fa);
+  box-shadow: 0 0 12px rgba(124, 106, 245, 0.5);
+  transition: transform 0.2s ease;
+}
+
+#pill:hover .pill-dot {
+  transform: scale(1.1);
+}
+
+
+/* ── PANEL (Expanded State) ──────────────────────────────── */
+#panel {
+  position: absolute;
+  top: 0; left: 0;
+  width: 480px;
+  height: 640px;
+  background: rgba(18, 18, 24, 0.97); /* solid — backdrop-filter unreliable on Windows */
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px) scale(0.98);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+#app-root.expanded #panel {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+#panel-header {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-light);
+  -webkit-app-region: drag;
+}
+
+.panel-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.brand-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+}
+
+.panel-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  -webkit-app-region: no-drag;
+}
+
+.stat-chip {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+  color: var(--text-muted);
+}
+
+#btn-collapse {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+#btn-collapse:hover { background: rgba(255,255,255,0.15); }
+
+/* ── INPUT MODAL (inside panel) ──────────────────────────── */
+#input-modal {
+  padding: 20px;
+  display: none; /* controlled by .open class */
+  flex-direction: column;
+}
+#input-modal.open { display: flex; }
+
+.modal-mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.mode-tab {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(255,255,255,0.03);
+}
+
+.mode-tab:hover { background: rgba(255,255,255,0.08); color: var(--text-main); }
+.mode-tab.active { background: rgba(124,106,245,0.15); color: var(--accent-purple); }
+
+#type-mode textarea {
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#type-mode textarea:focus {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 2px rgba(124,106,245,0.2);
+}
+
+/* Modal Actions */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-confirm { background: var(--accent-purple); color: #fff; flex: 1; }
+.btn-confirm:hover { background: var(--accent-hover); }
+.btn-cancel { background: rgba(255,255,255,0.1); color: var(--text-main); }
+.btn-cancel:hover { background: rgba(255,255,255,0.15); }
+
+/* ── VOICE INDICATOR ─────────────────────────────────────── */
+.voice-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0;
+  cursor: pointer;
+}
+
+.voice-waves { display: flex; gap: 4px; height: 30px; align-items: center; }
+.voice-wave {
+  width: 4px; height: 8px;
+  background: var(--accent-purple);
+  border-radius: 2px;
+  animation: wave 1s infinite ease-in-out;
+}
+.voice-wave:nth-child(2) { animation-delay: 0.1s; }
+.voice-wave:nth-child(3) { animation-delay: 0.2s; }
+.voice-wave:nth-child(4) { animation-delay: 0.3s; }
+.voice-wave:nth-child(5) { animation-delay: 0.4s; }
+.voice-wave:nth-child(6) { animation-delay: 0.5s; }
+
+@keyframes wave {
+  0%, 100% { height: 8px; }
+  50% { height: 30px; }
+}
+
+.voice-transcript { font-size: 16px; color: var(--text-main); font-weight: 300; }
+
+/* ── PARSED PREVIEW & DATE PROMPT ────────────────────────── */
+#parsed-preview {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(44, 212, 121, 0.1);
+  border: 1px solid rgba(44, 212, 121, 0.2);
+  border-radius: 8px;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+}
+#parsed-preview.visible { display: flex; }
+
+.parsed-task { font-size: 13px; font-weight: 500; }
+.parsed-date {
+  font-size: 11px;
+  background: var(--success);
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+#date-prompt {
+  margin-top: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px;
+  display: none;
+}
+#date-prompt.visible { display: block; }
+.date-prompt-label { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+.date-options { display: flex; gap: 8px; }
+.date-opt-btn {
+  flex: 1; padding: 6px; border-radius: 4px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border-light);
+  color: var(--text-main); font-size: 12px; cursor: pointer; transition: 0.2s;
+}
+.date-opt-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--accent-purple); }
+
+/* ── CONFIRM WINDOW ──────────────────────────────────────── */
+#confirm-window {
+  padding: 24px 20px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+#confirm-window.open { display: flex; }
+.confirm-label { font-size: 12px; color: var(--success); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 12px; }
+.confirm-task-name { font-size: 18px; margin-bottom: 16px; line-height: 1.4; }
+.confirm-date-badge { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 20px; font-size: 14px; margin-bottom: 24px; }
+.confirm-actions { display: flex; gap: 12px; width: 100%; }
+
+/* ── CALENDAR PANEL ──────────────────────────────────────── */
+.panel-divider { height: 1px; background: var(--border-light); margin: 0 20px; }
+
+#calendar-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#cal-header {
+  padding: 16px 20px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cal-title {
+  font-size: 13px; font-weight: 600; letter-spacing: 0.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.total-badge { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 10px; font-size: 10px; }
+
+.cal-nav { display: flex; gap: 4px; }
+.cal-nav-btn {
+  width: 24px; height: 24px; border: none; border-radius: 4px;
+  background: rgba(255,255,255,0.05); color: var(--text-main);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.cal-nav-btn:hover { background: rgba(255,255,255,0.15); }
+
+#cal-body {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 0 20px 20px;
+}
+
+/* Hide scrollbar */
+#cal-body::-webkit-scrollbar { width: 0px; }
+
+.cal-day-section { margin-bottom: 20px; }
+.cal-day-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.cal-day-name { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.cal-day-name.today { color: var(--accent-purple); }
+.day-right { display: flex; align-items: center; gap: 8px; }
+.cal-day-date { font-size: 11px; color: var(--text-muted); }
+.day-count { background: rgba(255,255,255,0.05); font-size: 10px; padding: 2px 6px; border-radius: 4px; color: var(--text-muted); }
+.day-count.has-tasks { background: var(--accent-purple); color: #fff; }
+
+.cal-tasks-list { display: flex; flex-direction: column; gap: 6px; }
+.empty-day { font-size: 12px; color: rgba(255,255,255,0.2); font-style: italic; padding: 4px 0; }
+
+.task-item {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.02); padding: 8px 10px;
+  border-radius: 6px; border: 1px solid transparent; transition: 0.2s;
+}
+.task-item:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+.task-item.done { opacity: 0.5; }
+.task-item.done .task-text { text-decoration: line-through; }
+
+.task-check {
+  width: 16px; height: 16px; border-radius: 4px;
+  border: 1px solid var(--text-muted); cursor: pointer; transition: 0.2s;
+}
+.task-check:hover { border-color: var(--accent-purple); }
+.task-item.done .task-check { background: var(--accent-purple); border-color: var(--accent-purple); }
+
+.task-text { flex: 1; font-size: 13px; }
+
+.task-move, .task-del {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 12px; opacity: 0; transition: 0.2s;
+}
+.task-item:hover .task-move, .task-item:hover .task-del { opacity: 1; }
+.task-move:hover { color: var(--text-main); }
+.task-del:hover { color: var(--danger); }
+
+/* ── MOVE PICKER ─────────────────────────────────────────── */
+#move-picker {
+  position: absolute; right: 20px; top: 50%;
+  background: var(--bg-dark); border: 1px solid var(--border-light);
+  border-radius: 8px; padding: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  display: none; flex-direction: column; z-index: 10;
+}
+#move-picker.open { display: flex; }
+.move-opt {
+  padding: 6px 12px; font-size: 12px; color: var(--text-main);
+  border-radius: 4px; cursor: pointer;
+}
+.move-opt:hover { background: rgba(255,255,255,0.1); }
+
+/* ── TOAST ───────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--text-main); color: var(--bg-dark);
+  padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 500;
+  opacity: 0; pointer-events: none; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
