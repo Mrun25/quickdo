@@ -1,0 +1,36 @@
+# electron-builder.yml
+# quickDo build configuration
+
+appId: com.quickdo.app
+productName: quickDo
+copyright: "Copyright © 2026 quickDo"
+
+directories:
+  output: dist
+  buildResources: assets
+
+files:
+  - src/**/*
+  - assets/**/*
+  - package.json
+
+win:
+  target:
+    - target: nsis
+      arch: x64
+  icon: assets/icon.ico
+  requestedExecutionLevel: asInvoker
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  deleteAppDataOnUninstall: false
+  createDesktopShortcut: false
+  createStartMenuShortcut: true
+  shortcutName: quickDo
+  uninstallDisplayName: quickDo
+
+publish:
+  provider: github
+  releaseType: release

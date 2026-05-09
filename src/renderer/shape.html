@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>quickDo — Hub</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 46px;
+    height: 46px;
+    overflow: hidden;
+    background: transparent;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .shape {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #1a1a2e; /* Dark blue matching app */
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, filter 0.2s ease;
+  }
+
+  .shape:hover {
+    filter: brightness(1.2);
+  }
+
+  .click-zone {
+    width: 16px;
+    height: 16px;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .click-zone::before,
+  .click-zone::after {
+    content: '';
+    position: absolute;
+    background: #63b3ed; /* Light blue plus */
+    border-radius: 2px;
+  }
+
+  .click-zone::before {
+    width: 2px;
+    height: 100%;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+  }
+
+  .click-zone::after {
+    width: 100%;
+    height: 2px;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+  }
+</style>
+</head>
+<body>
+<div class="shape" id="shape" title="Drag to move">
+  <div class="click-zone" id="click-zone" title="Click to toggle app"></div>
+</div>
+
+<script>
+  let isDragging = false;
+  let hasMoved = false;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  document.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return; // Only left click
+    isDragging = true;
+    hasMoved = false;
+    offsetX = e.clientX;
+    offsetY = e.clientY;
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      hasMoved = true;
+      window.quickDo.moveShape(e.screenX - offsetX, e.screenY - offsetY);
+    }
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    if (e.button !== 0) return;
+    isDragging = false;
+    if (!hasMoved) {
+      window.quickDo.toggleWidget();
+    }
+  });
+
+  document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    window.quickDo.shapeRightClicked();
+  });
+</script>
+</body>
+</html>

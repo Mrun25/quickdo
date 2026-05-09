@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>quickDo — Widget</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border-radius: var(--radius-lg);
+    background: var(--bg-deep);
+    border: 1px solid rgba(255,255,255,0.12);
+    /* Removed heavy shadow to prevent square clipping outline on transparent windows */
+    overflow: hidden;
+    position: relative;
+    transition: height 0.3s ease;
+  }
+
+  /* --- HEADER (Always Visible) --- */
+  .header {
+    height: 60px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+    -webkit-app-region: drag;
+  }
+
+  .drag-grip {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px;
+    margin-left: -8px;
+    cursor: grab;
+    opacity: 0.5;
+    transition: opacity var(--transition);
+    -webkit-app-region: drag;
+  }
+  .drag-grip:hover { opacity: 1; }
+  .drag-grip .dot-row { display: flex; gap: 3px; }
+  .drag-grip .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-secondary); }
+
+  .brand-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: linear-gradient(135deg, #63b3ed, #4299e1);
+    -webkit-app-region: drag;
+  }
+
+  .input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    padding: 0 12px;
+    height: 36px;
+    -webkit-app-region: no-drag;
+    transition: border-color var(--transition);
+  }
+  .input-wrapper:focus-within { border-color: var(--border-active); }
+
+  #task-input {
+    flex: 1;
+    font-size: 13px;
+    height: 100%;
+    background: transparent;
+    color: var(--text-primary);
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 6px;
+    -webkit-app-region: no-drag;
+  }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-size: 14px;
+  }
+  .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .icon-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--border-active); }
+
+  .mic-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    display: none;
+    margin-right: 8px;
+  }
+  .mic-indicator.listening {
+    display: block;
+    background: var(--success);
+    animation: blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .floating-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--accent);
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1000;
+    -webkit-app-region: no-drag;
+    transition: all var(--transition);
+  }
+  .floating-close:hover {
+    background: rgba(255,255,255,0.1);
+    transform: scale(1.1);
+  }
+
+  /* --- CALENDAR BODY --- */
+  .calendar-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+  .stat-chip { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+  .stat-chip .stat-val { font-weight: 700; color: var(--text-primary); }
+  .stat-chip .stat-val.accent { color: var(--accent); }
+  .stats-divider { width: 1px; height: 14px; background: var(--border-subtle); }
+
+  /* --- GRID CALENDAR --- */
+  .month-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .month-nav-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+  }
+  .month-nav-btn:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+  .month-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+  .grid-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    padding: 8px 16px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  
+  .days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 46px;
+    gap: 4px;
+    padding: 0 16px 16px;
+  }
+  
+  .day-box {
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    padding: 2px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all var(--transition);
+  }
+  .day-box:hover { background: var(--bg-hover); border-color: var(--border-mid); }
+  .day-box.today { background: var(--accent-dim); border-color: var(--accent); }
+  .day-box.selected { box-shadow: 0 0 0 2px var(--accent); }
+  .day-box.other-month { opacity: 0.3; }
+  
+  .day-num { font-size: 11px; font-weight: 600; color: var(--text-primary); align-self: flex-end; margin-right: 2px; margin-bottom: 2px; }
+  .day-box.today .day-num { color: var(--accent); }
+  
+  .task-labels { flex: 1; display: flex; flex-direction: column; gap: 1px; width: 100%; }
+  .task-label {
+    font-size: 8.5px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+  .task-label.done { opacity: 0.5; text-decoration: line-through; }
+
+  .selected-day-view {
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-deep);
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+  .selected-day-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+  
+  .task-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--bg-card); border: 1px solid var(--border-subtle); margin-bottom: 5px; transition: all var(--transition); }
+  .task-item:hover { border-color: var(--border-mid); background: var(--bg-hover); }
+  .task-item:hover .task-actions { opacity: 1; }
+  
+  .task-checkbox { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border-mid); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: transparent; font-size: 10px; color: transparent; transition: all var(--transition); }
+  .task-item.done .task-checkbox { background: var(--success); border-color: var(--success); color: var(--bg-deep); }
+  .task-checkbox:hover { border-color: var(--success); }
+  .task-text { flex: 1; font-size: 13px; color: var(--text-primary); font-weight: 400; line-height: 1.4; }
+  .task-item.done .task-text { text-decoration: line-through; color: var(--text-muted); }
+  
+  .task-date-badge { font-size: 10px; color: var(--text-muted); background: var(--bg-active); border-radius: 4px; padding: 2px 6px; font-weight: 500; cursor: pointer; transition: all var(--transition); }
+  .task-date-badge:hover { color: var(--accent); background: var(--accent-dim); }
+  
+  .task-actions { display: flex; gap: 4px; opacity: 0; transition: opacity var(--transition); }
+  .task-action-btn { width: 22px; height: 22px; border-radius: 5px; background: transparent; color: var(--text-muted); font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
+  .task-action-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+  .task-action-btn.delete:hover { background: rgba(252,129,129,0.15); color: var(--danger); }
+  
+  .empty-day { padding: 6px 10px; font-size: 12px; color: var(--text-muted); font-style: italic; }
+  #today-anchor { scroll-margin-top: 8px; }
+
+  /* --- CONFIRM SECTION --- */
+  .confirm-section {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-active);
+    padding: 16px;
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .confirm-section.visible { display: flex; }
+
+  .confirm-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .date-row { display: flex; gap: 6px; }
+  .date-chip { flex: 1; height: 32px; border-radius: var(--radius-sm); background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 12px; font-weight: 500; cursor: pointer; transition: all var(--transition); display: flex; align-items: center; justify-content: center; }
+  .date-chip:hover { border-color: var(--border-mid); color: var(--text-primary); background: var(--bg-hover); }
+  .date-chip.selected { border-color: var(--border-active); background: var(--accent-dim); color: var(--text-accent); }
+  .custom-date-row { display: none; }
+  .custom-date-row.visible { display: flex; }
+  #custom-date-input { flex: 1; height: 32px; background: var(--bg-card); border: 1px solid var(--border-active); border-radius: var(--radius-sm); padding: 0 10px; font-size: 12px; color: var(--text-primary); }
+  
+  .actions { display: flex; gap: 8px; }
+  .btn-cancel { flex: 1; height: 34px; border-radius: var(--radius-sm); background: rgba(255,255,255,0.06); color: var(--text-secondary); font-size: 13px; font-weight: 500; }
+  .btn-cancel:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+  .btn-confirm { flex: 2; height: 34px; border-radius: var(--radius-sm); background: var(--accent); color: var(--bg-deep); font-size: 13px; font-weight: 600; }
+  .btn-confirm:hover { background: #90cdf4; transform: scale(1.02); }
+  .btn-confirm:disabled { background: var(--bg-hover); color: var(--text-muted); cursor: not-allowed; transform: none; }
+  .error-msg { font-size: 11px; color: var(--danger); text-align: center; min-height: 14px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <button class="floating-close" id="btn-close-float" title="Hide App">✖</button>
+
+  <!-- Header -->
+  <div class="header drag-handle">
+    <div class="drag-grip" title="Drag to move">
+      <div class="dot-row"><div class="dot"></div><div class="dot"></div></div>
+      <div class="dot-row"><div class="dot"></div><div class="dot"></div></div>
+      <div class="dot-row"><div class="dot"></div><div class="dot"></div></div>
+    </div>
+    <div class="brand-dot"></div>
+    <div class="input-wrapper">
+      <div class="mic-indicator" id="mic-indicator"></div>
+      <input type="text" id="task-input" placeholder="Add a task... try 'dentist Friday'" spellcheck="false" autocomplete="off">
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="btn-voice" title="Voice Input">🎤</button>
+      <button class="icon-btn" id="btn-toggle-calendar" title="Toggle Calendar">📅</button>
+    </div>
+  </div>
+
+  <!-- Confirm Section -->
+  <div class="confirm-section" id="confirm-section">
+    <div class="confirm-title">Confirm Task</div>
+    <input type="text" id="confirm-text" style="height:36px; padding:0 12px; width:100%; font-size:13px; background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: var(--radius-sm); color: var(--text-primary); outline: none;" placeholder="Task description">
+    <div class="date-row">
+      <button class="date-chip" id="chip-today" data-date="">Today</button>
+      <button class="date-chip" id="chip-tomorrow" data-date="">Tomorrow</button>
+      <button class="date-chip" id="chip-pick">📅 Pick</button>
+    </div>
+    <div class="custom-date-row" id="custom-date-row">
+      <input type="date" id="custom-date-input">
+    </div>
+    <div class="error-msg" id="error-msg"></div>
+    <div class="actions">
+      <button class="btn-cancel" id="btn-cancel">Cancel</button>
+      <button class="btn-confirm" id="btn-confirm" disabled>Save Task</button>
+    </div>
+  </div>
+
+  <!-- Calendar Body -->
+  <div class="calendar-body" id="calendar-body" style="display: none;">
+    <div class="month-header">
+      <button class="month-nav-btn" id="btn-prev-month">◀</button>
+      <div class="month-title" id="month-title">May 2026</div>
+      <button class="month-nav-btn" id="btn-next-month">▶</button>
+    </div>
+    <div class="grid-header">
+      <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+    </div>
+    <div class="days-grid" id="days-grid"></div>
+    <div class="selected-day-view" id="selected-day-view">
+      <div class="selected-day-title" id="selected-day-title">Today</div>
+      <div id="selected-day-tasks"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- STATE ---
+  let isCalendarOpen = false;
+  let isVoiceActive = false;
+  let recognition = null;
+  
+  // Confirm state
+  let selectedDate = null;
+  let selectedExactTime = null;
+  let isSaving = false;
+  let isConfirming = false;
+
+  const appEl = document.getElementById('app');
+  const taskInput = document.getElementById('task-input');
+  const btnVoice = document.getElementById('btn-voice');
+  const btnToggleCal = document.getElementById('btn-toggle-calendar');
+  const btnClose = document.getElementById('btn-close-float');
+  const calBody = document.getElementById('calendar-body');
+  const micIndicator = document.getElementById('mic-indicator');
+  const confirmSection = document.getElementById('confirm-section');
+  
+  // Calendar elements
+  const root = document.getElementById('calendar-root');
+  const selectedDayView = document.getElementById('selected-day-view');
+  
+  // Confirm elements
+  const confirmText = document.getElementById('confirm-text');
+  const chipToday = document.getElementById('chip-today');
+  const chipTomorrow = document.getElementById('chip-tomorrow');
+  const chipPick = document.getElementById('chip-pick');
+  const customRow = document.getElementById('custom-date-row');
+  const customDate = document.getElementById('custom-date-input');
+  const btnConfirm = document.getElementById('btn-confirm');
+  const btnCancel = document.getElementById('btn-cancel');
+  const errorMsg = document.getElementById('error-msg');
+
+  // Dates
+  function toDateStr(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,'0');
+    const d = String(date.getDate()).padStart(2,'0');
+    return `${y}-${m}-${d}`;
+  }
+  const today = toDateStr(new Date());
+  const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate()+1); return toDateStr(d); })();
+  chipToday.dataset.date = today;
+  chipTomorrow.dataset.date = tomorrow;
+  customDate.min = today;
+
+  // --- WINDOW SIZING ---
+  function updateWindowSize() {
+    // Let main process know what size to be
+    window.quickDo.resizeWidget(isCalendarOpen, isConfirming);
+    if (isCalendarOpen) {
+      calBody.style.display = 'flex';
+      btnToggleCal.classList.add('active');
+      renderCalendar();
+    } else {
+      calBody.style.display = 'none';
+      btnToggleCal.classList.remove('active');
+    }
+  }
+
+  btnToggleCal.addEventListener('click', () => {
+    isCalendarOpen = !isCalendarOpen;
+    updateWindowSize();
+  });
+
+  btnClose.addEventListener('click', () => {
+    window.quickDo.hideWidget();
+  });
+
+  // Init
+  updateWindowSize();
+
+  // --- INPUT HANDLING ---
+  taskInput.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter' && taskInput.value.trim()) {
+      await processTask(taskInput.value.trim());
+    }
+  });
+
+  async function processTask(text) {
+    try {
+      const parsed = await window.quickDo.parseTask(text);
+      if (parsed.command === 'open-calendar') {
+        if (!isCalendarOpen) btnToggleCal.click();
+        taskInput.value = '';
+        return;
+      }
+      openConfirmDialog(parsed.text || text, parsed.date || null, parsed.exactTime || null);
+    } catch (err) {
+      openConfirmDialog(text, null, null);
+    }
+  }
+
+  // --- CONFIRM DIALOG ---
+  function openConfirmDialog(text, date, exactTime) {
+    isConfirming = true;
+    isCalendarOpen = true;
+    updateWindowSize();
+    
+    confirmText.value = text;
+    selectedExactTime = exactTime;
+    if (date) {
+      setDate(date);
+      if (date === today) selectChip(chipToday);
+      else if (date === tomorrow) selectChip(chipTomorrow);
+      else {
+        customDate.value = date;
+        customRow.classList.add('visible');
+        selectChip(chipPick);
+      }
+    } else {
+      setDate(null);
+      selectChip(null);
+      customRow.classList.remove('visible');
+    }
+    validateConfirm();
+    confirmSection.classList.add('visible');
+    confirmText.focus();
+  }
+
+  function closeConfirmDialog() {
+    isConfirming = false;
+    updateWindowSize();
+    confirmSection.classList.remove('visible');
+    taskInput.value = '';
+    taskInput.focus();
+    if(isVoiceActive) stopVoice();
+  }
+
+  confirmText.addEventListener('input', validateConfirm);
+  chipToday.addEventListener('click', () => { setDate(today); selectChip(chipToday); customRow.classList.remove('visible'); });
+  chipTomorrow.addEventListener('click', () => { setDate(tomorrow); selectChip(chipTomorrow); customRow.classList.remove('visible'); });
+  chipPick.addEventListener('click', () => { selectChip(chipPick); customRow.classList.add('visible'); customDate.focus(); if (customDate.value) setDate(customDate.value); });
+  customDate.addEventListener('change', () => { setDate(customDate.value || null); validateConfirm(); });
+  btnCancel.addEventListener('click', closeConfirmDialog);
+  
+  btnConfirm.addEventListener('click', async () => {
+    if (isSaving || btnConfirm.disabled) return;
+    isSaving = true;
+    errorMsg.textContent = '';
+    const text = confirmText.value.trim();
+    if (!text || !selectedDate) { errorMsg.textContent = 'Enter task & select date.'; isSaving = false; return; }
+    
+    btnConfirm.disabled = true;
+    btnConfirm.textContent = 'Saving...';
+    
+    const res = await window.quickDo.saveTask({ text, date: selectedDate, exactTime: selectedExactTime });
+    if (res.success) {
+      closeConfirmDialog();
+      if (isCalendarOpen) renderCalendar();
+    } else {
+      errorMsg.textContent = res.error || 'Failed.';
+    }
+    btnConfirm.textContent = 'Save Task';
+    btnConfirm.disabled = false;
+    isSaving = false;
+  });
+
+  function setDate(date) { selectedDate = date; validateConfirm(); }
+  function selectChip(chip) { [chipToday, chipTomorrow, chipPick].forEach(c => c.classList.remove('selected')); if(chip) chip.classList.add('selected'); }
+  function validateConfirm() { btnConfirm.disabled = !(confirmText.value.trim().length > 0 && selectedDate); }
+
+  // --- CALENDAR LOGIC ---
+  let currentMonthDate = new Date();
+  currentMonthDate.setDate(1);
+  let selectedGridDate = today;
+
+  async function renderCalendar() {
+    const tasks = await window.quickDo.getTasks();
+    const byDate = {};
+    tasks.forEach(t => { if(t.date) { byDate[t.date] = byDate[t.date] || []; byDate[t.date].push(t); } });
+
+    const monthOpts = { month: 'long', year: 'numeric' };
+    document.getElementById('month-title').textContent = currentMonthDate.toLocaleDateString('en-US', monthOpts);
+
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+    const daysGrid = document.getElementById('days-grid');
+    daysGrid.innerHTML = '';
+
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const dateStr = toDateStr(new Date(year, month - 1, d));
+      daysGrid.appendChild(createDayBox(d, dateStr, byDate[dateStr], true));
+    }
+
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = toDateStr(new Date(year, month, i));
+      daysGrid.appendChild(createDayBox(i, dateStr, byDate[dateStr], false));
+    }
+
+    const totalBoxes = firstDay + daysInMonth;
+    const nextDays = totalBoxes > 35 ? 42 - totalBoxes : 35 - totalBoxes;
+    for (let i = 1; i <= nextDays; i++) {
+      const dateStr = toDateStr(new Date(year, month + 1, i));
+      daysGrid.appendChild(createDayBox(i, dateStr, byDate[dateStr], true));
+    }
+
+    renderSelectedDayTasks(selectedGridDate, byDate[selectedGridDate] || []);
+  }
+
+  function createDayBox(dayNum, dateStr, dayTasks = [], isOtherMonth) {
+    const box = document.createElement('div');
+    box.className = 'day-box' + (isOtherMonth ? ' other-month' : '') + (dateStr === today ? ' today' : '') + (dateStr === selectedGridDate ? ' selected' : '');
+    
+    const labelsHtml = dayTasks.slice(0, 3).map(t => `<div class="task-label${t.completed ? ' done' : ''}">${t.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`).join('');
+
+    box.innerHTML = `<div class="day-num">${dayNum}</div><div class="task-labels">${labelsHtml}</div>`;
+    box.addEventListener('click', () => { selectedGridDate = dateStr; renderCalendar(); });
+    return box;
+  }
+
+  function renderSelectedDayTasks(dateStr, dayTasks) {
+    let titleStr = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    if (dateStr === today) titleStr = 'Today — ' + titleStr;
+    document.getElementById('selected-day-title').textContent = titleStr;
+    
+    const container = document.getElementById('selected-day-tasks');
+    container.innerHTML = '';
+
+    if (dayTasks.length === 0) {
+      container.innerHTML = `<div class="empty-day" style="padding-left:0;">No tasks scheduled.</div>`;
+      return;
+    }
+
+    dayTasks.forEach(task => {
+      const item = document.createElement('div');
+      item.className = 'task-item' + (task.completed ? ' done' : '');
+      item.innerHTML = `
+        <button class="task-checkbox">${task.completed ? '✓' : ''}</button>
+        <span class="task-text">${task.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+        <div class="task-actions"><button class="task-action-btn delete delete-btn">✕</button></div>
+      `;
+      item.querySelector('.task-checkbox').addEventListener('click', async () => { await window.quickDo.updateTask({ ...task, completed: !task.completed }); renderCalendar(); });
+      item.querySelector('.delete-btn').addEventListener('click', async () => { await window.quickDo.deleteTask(task.id); renderCalendar(); });
+      container.appendChild(item);
+    });
+  }
+
+  document.getElementById('btn-prev-month').addEventListener('click', () => { currentMonthDate.setMonth(currentMonthDate.getMonth() - 1); renderCalendar(); });
+  document.getElementById('btn-next-month').addEventListener('click', () => { currentMonthDate.setMonth(currentMonthDate.getMonth() + 1); renderCalendar(); });
+
+  window.quickDo.onTasksUpdated(() => { if (isCalendarOpen) renderCalendar(); });
+
+  window.quickDo.onTriggerVoice(() => {
+    if (!isVoiceActive) startVoice();
+  });
+
+  // --- VOICE ---
+  let mediaRecorder = null;
+  let audioChunks = [];
+
+  btnVoice.addEventListener('click', async () => {
+    if (isVoiceActive) stopVoice();
+    else await startVoice();
+  });
+
+  async function startVoice() {
+    const groqKey = await window.quickDo.getGroqKey();
+    if (!groqKey) {
+      const key = prompt('Please enter your Groq API Key to enable voice dictation:');
+      if (key) {
+        await window.quickDo.setGroqKey(key.trim());
+      } else {
+        return;
+      }
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        await processAudio(audioBlob);
+      };
+
+      mediaRecorder.start();
+      isVoiceActive = true;
+      btnVoice.classList.add('active');
+      micIndicator.classList.add('listening');
+      taskInput.placeholder = 'Listening... (click to stop)';
+      taskInput.value = '';
+    } catch (err) {
+      console.error(err);
+      taskInput.placeholder = 'Mic error: ' + err.message;
+      setTimeout(() => taskInput.placeholder = "Add a task... try 'dentist Friday'", 4000);
+    }
+  }
+
+  function stopVoice() {
+    if (!isVoiceActive || !mediaRecorder) return;
+    isVoiceActive = false;
+    btnVoice.classList.remove('active');
+    micIndicator.classList.remove('listening');
+    mediaRecorder.stop();
+    taskInput.placeholder = "Add a task... try 'dentist Friday'";
+  }
+
+  async function processAudio(blob) {
+    const groqKey = await window.quickDo.getGroqKey();
+    if (!groqKey) return;
+
+    taskInput.placeholder = 'Transcribing...';
+    
+    const formData = new FormData();
+    formData.append('file', blob, 'audio.webm');
+    formData.append('model', 'whisper-large-v3');
+    
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqKey}`
+        },
+        body: formData
+      });
+      
+      const data = await res.json();
+      if (data.text) {
+        taskInput.value = data.text.trim();
+        processTask(data.text.trim());
+      } else if (data.error) {
+        taskInput.placeholder = 'API Error: ' + data.error.message;
+        setTimeout(() => taskInput.placeholder = "Add a task... try 'dentist Friday'", 4000);
+      }
+    } catch (err) {
+      console.error(err);
+      taskInput.placeholder = 'Failed to connect to Groq API.';
+      setTimeout(() => taskInput.placeholder = "Add a task... try 'dentist Friday'", 4000);
+    }
+  }
+
+  // Focus
+  taskInput.focus();
+</script>
+</body>
+</html>
