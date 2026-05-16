@@ -242,14 +242,7 @@
   }
   .task-label.done { opacity: 0.5; text-decoration: line-through; }
 
-  .selected-day-view {
-    border-top: 1px solid var(--border-subtle);
-    background: var(--bg-deep);
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px 16px;
-  }
-  .selected-day-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+
   
   .task-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--bg-card); border: 1px solid var(--border-subtle); margin-bottom: 5px; transition: all var(--transition); }
   .task-item:hover { border-color: var(--border-mid); background: var(--bg-hover); }
@@ -345,18 +338,27 @@
 
   <!-- Calendar Body -->
   <div class="calendar-body" id="calendar-body" style="display: none;">
-    <div class="month-header">
-      <button class="month-nav-btn" id="btn-prev-month">◀</button>
-      <div class="month-title" id="month-title">May 2026</div>
-      <button class="month-nav-btn" id="btn-next-month">▶</button>
+    <div id="month-view-container" style="display: flex; flex-direction: column; flex: 1;">
+      <div class="month-header">
+        <button class="month-nav-btn" id="btn-prev-month">◀</button>
+        <div class="month-title" id="month-title">May 2026</div>
+        <button class="month-nav-btn" id="btn-next-month">▶</button>
+      </div>
+      <div class="grid-header">
+        <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+      </div>
+      <div class="days-grid" id="days-grid"></div>
     </div>
-    <div class="grid-header">
-      <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
-    </div>
-    <div class="days-grid" id="days-grid"></div>
-    <div class="selected-day-view" id="selected-day-view">
-      <div class="selected-day-title" id="selected-day-title">Today</div>
-      <div id="selected-day-tasks"></div>
+    
+    <div id="day-view-container" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; background: var(--bg-surface);">
+      <div class="day-view-header" style="display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); position: sticky; top: 0; z-index: 10; background: var(--bg-surface);">
+        <button id="btn-back-to-calendar" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; font-size: 13px; padding: 4px 8px; border-radius: var(--radius-sm); margin-right: 12px; font-weight: 500; display: flex; align-items: center; gap: 4px;"><span>◀</span></button>
+        <div class="day-view-title-wrap" style="display: flex; flex-direction: column;">
+          <div class="day-view-date" id="day-view-date" style="font-size: 14px; font-weight: 600; color: var(--text-primary);"></div>
+          <div class="day-view-dayname" id="day-view-dayname" style="font-size: 11px; font-weight: 500; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;"></div>
+        </div>
+      </div>
+      <div id="day-view-tasks" style="padding: 16px; display: flex; flex-direction: column; gap: 6px;"></div>
     </div>
   </div>
 </div>
@@ -383,8 +385,12 @@
   const confirmSection = document.getElementById('confirm-section');
   
   // Calendar elements
-  const root = document.getElementById('calendar-root');
-  const selectedDayView = document.getElementById('selected-day-view');
+  const monthViewContainer = document.getElementById('month-view-container');
+  const dayViewContainer = document.getElementById('day-view-container');
+  const btnBackToCalendar = document.getElementById('btn-back-to-calendar');
+  const dayViewDate = document.getElementById('day-view-date');
+  const dayViewDayname = document.getElementById('day-view-dayname');
+  const dayViewTasks = document.getElementById('day-view-tasks');
   
   // Confirm elements
   const confirmText = document.getElementById('confirm-text');
@@ -418,6 +424,10 @@
       calBody.style.display = 'flex';
       btnToggleCal.classList.add('active');
       renderCalendar();
+      dayViewContainer.style.display = 'none';
+      monthViewContainer.style.display = 'flex';
+      dayViewContainer.style.display = 'none';
+      monthViewContainer.style.display = 'flex';
     } else {
       calBody.style.display = 'none';
       btnToggleCal.classList.remove('active');
@@ -430,6 +440,11 @@
   });
 
   btnClose.addEventListener('click', () => {
+    isCalendarOpen = false;
+    isConfirming = false;
+    updateWindowSize();
+    confirmSection.classList.remove('visible');
+    taskInput.value = '';
     window.quickDo.hideWidget();
   });
 
@@ -441,6 +456,18 @@
     if (e.key === 'Enter' && taskInput.value.trim()) {
       await processTask(taskInput.value.trim());
     }
+  });
+
+  taskInput.addEventListener('input', () => {
+    if (isConfirming) {
+      confirmText.value = taskInput.value;
+      validateConfirm();
+    }
+  });
+
+  confirmText.addEventListener('input', () => {
+    taskInput.value = confirmText.value;
+    validateConfirm();
   });
 
   async function processTask(text) {
@@ -460,7 +487,6 @@
   // --- CONFIRM DIALOG ---
   function openConfirmDialog(text, date, exactTime) {
     isConfirming = true;
-    isCalendarOpen = true;
     updateWindowSize();
     
     confirmText.value = text;
@@ -493,7 +519,7 @@
     if(isVoiceActive) stopVoice();
   }
 
-  confirmText.addEventListener('input', validateConfirm);
+  // validation listeners are already attached above
   chipToday.addEventListener('click', () => { setDate(today); selectChip(chipToday); customRow.classList.remove('visible'); });
   chipTomorrow.addEventListener('click', () => { setDate(tomorrow); selectChip(chipTomorrow); customRow.classList.remove('visible'); });
   chipPick.addEventListener('click', () => { selectChip(chipPick); customRow.classList.add('visible'); customDate.focus(); if (customDate.value) setDate(customDate.value); });
@@ -531,6 +557,16 @@
   currentMonthDate.setDate(1);
   let selectedGridDate = today;
 
+  btnBackToCalendar.addEventListener('click', () => {
+    dayViewContainer.style.display = 'none';
+    monthViewContainer.style.display = 'flex';
+  });
+
+  async function getTasksForDate(dateStr) {
+    const tasks = await window.quickDo.getTasks();
+    return tasks.filter(t => t.date === dateStr);
+  }
+
   async function renderCalendar() {
     const tasks = await window.quickDo.getTasks();
     const byDate = {};
@@ -566,7 +602,7 @@
       daysGrid.appendChild(createDayBox(i, dateStr, byDate[dateStr], true));
     }
 
-    renderSelectedDayTasks(selectedGridDate, byDate[selectedGridDate] || []);
+
   }
 
   function createDayBox(dayNum, dateStr, dayTasks = [], isOtherMonth) {
@@ -576,20 +612,36 @@
     const labelsHtml = dayTasks.slice(0, 3).map(t => `<div class="task-label${t.completed ? ' done' : ''}">${t.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`).join('');
 
     box.innerHTML = `<div class="day-num">${dayNum}</div><div class="task-labels">${labelsHtml}</div>`;
-    box.addEventListener('click', () => { selectedGridDate = dateStr; renderCalendar(); });
+    box.addEventListener('click', () => { 
+      selectedGridDate = dateStr; 
+      openDayView(dateStr, dayTasks);
+    });
     return box;
   }
 
-  function renderSelectedDayTasks(dateStr, dayTasks) {
-    let titleStr = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    if (dateStr === today) titleStr = 'Today — ' + titleStr;
-    document.getElementById('selected-day-title').textContent = titleStr;
-    
-    const container = document.getElementById('selected-day-tasks');
-    container.innerHTML = '';
+  function openDayView(dateStr, dayTasks) {
+    renderDayView(dateStr, dayTasks);
+    monthViewContainer.style.display = 'none';
+    dayViewContainer.style.display = 'flex';
+  }
 
-    if (dayTasks.length === 0) {
-      container.innerHTML = `<div class="empty-day" style="padding-left:0;">No tasks scheduled.</div>`;
+  function renderDayView(dateStr, dayTasks) {
+    const d = new Date(dateStr + 'T00:00:00');
+    
+    const day = d.getDate();
+    const suffix = ["th", "st", "nd", "rd"][(day % 10 > 3 || Math.floor(day % 100 / 10) === 1) ? 0 : day % 10];
+    const month = d.toLocaleDateString('en-US', { month: 'long' });
+    
+    let titleStr = `${day}${suffix} ${month}`;
+    if (dateStr === today) titleStr = 'Today — ' + titleStr;
+    
+    dayViewDate.textContent = titleStr;
+    dayViewDayname.textContent = d.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    dayViewTasks.innerHTML = '';
+
+    if (!dayTasks || dayTasks.length === 0) {
+      dayViewTasks.innerHTML = `<div class="empty-day" style="padding-left:0;">No tasks scheduled for this day.</div>`;
       return;
     }
 
@@ -601,9 +653,21 @@
         <span class="task-text">${task.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
         <div class="task-actions"><button class="task-action-btn delete delete-btn">✕</button></div>
       `;
-      item.querySelector('.task-checkbox').addEventListener('click', async () => { await window.quickDo.updateTask({ ...task, completed: !task.completed }); renderCalendar(); });
-      item.querySelector('.delete-btn').addEventListener('click', async () => { await window.quickDo.deleteTask(task.id); renderCalendar(); });
-      container.appendChild(item);
+      item.querySelector('.task-checkbox').addEventListener('click', async (e) => { 
+        e.stopPropagation();
+        await window.quickDo.updateTask({ ...task, completed: !task.completed }); 
+        const newTasks = await getTasksForDate(dateStr);
+        renderCalendar(); 
+        openDayView(dateStr, newTasks);
+      });
+      item.querySelector('.delete-btn').addEventListener('click', async (e) => { 
+        e.stopPropagation();
+        await window.quickDo.deleteTask(task.id); 
+        const newTasks = await getTasksForDate(dateStr);
+        renderCalendar(); 
+        openDayView(dateStr, newTasks);
+      });
+      dayViewTasks.appendChild(item);
     });
   }
 

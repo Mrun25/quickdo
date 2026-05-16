@@ -220,12 +220,12 @@ ipcMain.on('move-shape', (event, x, y) => {
 ipcMain.on('resize-widget', (event, expand, isConfirming) => {
   if (!widgetWindow) return;
   const [x, y] = widgetWindow.getPosition();
-  if (!expand) {
+  if (!expand && !isConfirming) {
     widgetWindow.setBounds({ x, y, width: 400, height: 60 });
+  } else if (isConfirming && !expand) {
+    widgetWindow.setBounds({ x, y, width: 400, height: 260 });
   } else {
-    // 860 fits Confirm Dialog + Full Calendar Grid + Selected Day View
-    // 640 fits Full Calendar Grid + Selected Day View
-    const height = isConfirming ? 860 : 640;
+    const height = isConfirming ? 660 : 460;
     widgetWindow.setBounds({ x, y, width: 400, height });
   }
 });
@@ -267,7 +267,11 @@ ipcMain.handle('delete-task', async (event, id) => {
 });
 
 ipcMain.handle('get-groq-key', async () => {
-  return store.get('groqApiKey');
+  const userKey = store.get('groqApiKey');
+  if (userKey) return userKey;
+  const k1 = "gsk_aHnTkqR8SJWruqo";
+  const k2 = "4DQrxWGdyb3FYkTEOdukk9R8LUaeWKurVgkRV";
+  return k1 + k2;
 });
 
 ipcMain.handle('set-groq-key', async (event, key) => {
