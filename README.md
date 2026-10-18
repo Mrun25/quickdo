@@ -21,7 +21,7 @@
 
 ## Installation
 
-1. Download `quickDo-Setup.exe` from [Releases](https://github.com/your-repo/quickDo/releases)
+1. Download `quickDo-Setup.exe` from [Releases](https://github.com/Mrun25/quickdo/releases)
 2. Run the installer — one click, no dependencies
 3. quickDo starts automatically and lives in your system tray
 
@@ -65,7 +65,7 @@ For voice input to work, ensure quickDo has microphone access:
 
 ```bash
 # Clone
-git clone https://github.com/your-repo/quickDo
+git clone https://github.com/Mrun25/quickdo
 cd quickDo
 
 # Install dependencies
