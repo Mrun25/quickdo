@@ -269,9 +269,7 @@ ipcMain.handle('delete-task', async (event, id) => {
 ipcMain.handle('get-groq-key', async () => {
   const userKey = store.get('groqApiKey');
   if (userKey) return userKey;
-  const k1 = "gsk_aHnTkqR8SJWruqo";
-  const k2 = "4DQrxWGdyb3FYkTEOdukk9R8LUaeWKurVgkRV";
-  return k1 + k2;
+  return ''; // No shared credential: configure your own key in settings.
 });
 
 ipcMain.handle('set-groq-key', async (event, key) => {
