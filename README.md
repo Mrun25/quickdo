@@ -130,3 +130,8 @@ MIT — free to use, fork, and contribute.
 ---
 
 *Made for people who think of things mid-flow and don't want to lose them.*
+
+
+## Offline regression tests
+
+Run `npm test` with Node.js 22 or newer. The tests cover local task storage and reminder scheduling without installing Electron or making network/API calls. They use a mocked notification API; native Windows notification display still needs a desktop smoke test.

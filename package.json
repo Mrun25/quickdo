@@ -4,6 +4,7 @@
   "description": "A lightweight, always-on Windows desktop task capture app",
   "main": "src/main/main.js",
   "scripts": {
+    "test": "node --test tests/*.test.js",
     "start": "electron .",
     "dev": "electron . --dev",
     "build": "electron-builder --win --x64",

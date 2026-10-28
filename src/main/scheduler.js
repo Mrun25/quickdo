@@ -6,11 +6,12 @@ const { Notification } = require('electron');
 class Scheduler {
   constructor(store) {
     this.store = store;
-    this.notifiedTaskIds = new Set();
+    this.notifiedTaskTimes = new Map();
     this.intervalId = null;
   }
 
   start() {
+    if (this.intervalId !== null) return;
     // Run every minute
     this.intervalId = setInterval(() => this.checkTasks(), 60000);
     // Do an initial check
@@ -18,7 +19,7 @@ class Scheduler {
   }
 
   stop() {
-    if (this.intervalId) {
+    if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
@@ -29,18 +30,23 @@ class Scheduler {
     const now = Date.now();
     const THIRTY_MINS = 30 * 60 * 1000;
 
+    const currentIds = new Set(tasks.map(task => task.id));
+    for (const id of this.notifiedTaskTimes.keys()) {
+      if (!currentIds.has(id)) this.notifiedTaskTimes.delete(id);
+    }
+
     tasks.forEach(task => {
       if (task.completed || !task.exactTime) return;
-      if (this.notifiedTaskIds.has(task.id)) return;
-
       const taskTime = new Date(task.exactTime).getTime();
+      // Editing a due time must not suppress its new reminder. Compare the
+      // instant rather than the timestamp spelling to avoid duplicates.
+      if (this.notifiedTaskTimes.get(task.id) === taskTime) return;
       const timeDiff = taskTime - now;
 
-      // If task is in the future, and within 30 minutes (and more than 29 minutes to avoid double triggers if setInterval drifts, though Set handles it)
-      // Actually we just check if timeDiff is between 0 and 30 minutes
+      // Notify future tasks within 30 minutes; tracking prevents repeats.
       if (timeDiff > 0 && timeDiff <= THIRTY_MINS) {
         this.sendNotification('Upcoming Task in 30 mins', task.text);
-        this.notifiedTaskIds.add(task.id);
+        this.notifiedTaskTimes.set(task.id, taskTime);
       }
     });
   }
