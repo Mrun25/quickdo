@@ -67,7 +67,8 @@ class Store {
 
   getTasks() {
     try {
-      return JSON.parse(fs.readFileSync(this.tasksPath, 'utf-8'));
+      const tasks = JSON.parse(fs.readFileSync(this.tasksPath, 'utf-8'));
+      return Array.isArray(tasks) ? tasks : [];
     } catch {
       return [];
     }

@@ -86,3 +86,22 @@ test('packaged source has no bundled Groq credential', () => {
   assert.equal(/gsk_[A-Za-z0-9]/.test(source), false);
   assert.ok(source.includes("return ''; // No shared credential"));
 });
+
+for (const broken of ['{truncated', '{}', 'null', '"not a list"', '42']) {
+  test(`reading damaged/non-list storage returns a safe empty task list: ${broken}`, () => {
+    fs.writeFileSync(tasksFile(), broken);
+    const tasks = store.getTasks();
+    assert.equal(Array.isArray(tasks), true);
+    assert.equal(tasks.length, 0);
+    assert.equal(fs.readFileSync(tasksFile(), 'utf8'), broken);
+    assert.throws(() => store.addTask({ id: 'new', text: 'Do not overwrite' }));
+    assert.equal(fs.readFileSync(tasksFile(), 'utf8'), broken);
+  });
+}
+
+test('reading valid tasks does not change their contents or file', () => {
+  const original = '[{"id":"a","text":"Keep me","completed":false}]';
+  fs.writeFileSync(tasksFile(), original);
+  assert.equal(JSON.stringify(store.getTasks()), original);
+  assert.equal(fs.readFileSync(tasksFile(), 'utf8'), original);
+});
