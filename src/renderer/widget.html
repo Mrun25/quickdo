@@ -254,6 +254,9 @@
   .task-checkbox { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border-mid); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: transparent; font-size: 10px; color: transparent; transition: all var(--transition); }
   .task-item.done .task-checkbox { background: var(--success); border-color: var(--success); color: var(--bg-deep); }
   .task-checkbox:hover { border-color: var(--success); }
+  .task-item { flex-wrap: wrap; }
+  .task-error { flex-basis: 100%; color: var(--text-primary); font-size: 11px; line-height: 1.5; padding-left: 26px; }
+  .task-item button:disabled { opacity: 0.45; cursor: wait; }
   .task-text { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13px; color: var(--text-primary); font-weight: 400; line-height: 1.4; }
   .task-item.done .task-text { text-decoration: line-through; color: var(--text-muted); }
   
@@ -633,6 +636,40 @@
     dayViewContainer.style.display = 'flex';
   }
 
+  async function applyTaskAction(item, dateStr, action) {
+    if (item.dataset.pending === 'true') return;
+    item.dataset.pending = 'true';
+    const buttons = item.querySelectorAll('button');
+    buttons.forEach(button => { button.disabled = true; });
+    const previousError = item.querySelector('.task-error');
+    if (previousError) previousError.remove();
+    try {
+      const result = await action();
+      if (!result || !result.success) throw new Error('Task change was not saved');
+    } catch {
+      const error = document.createElement('div');
+      error.className = 'task-error';
+      error.setAttribute('role', 'alert');
+      error.textContent = 'Could not save this change. Try again.';
+      item.appendChild(error);
+      return;
+    } finally {
+      delete item.dataset.pending;
+      buttons.forEach(button => { button.disabled = false; });
+    }
+    try {
+      const newTasks = await getTasksForDate(dateStr);
+      await renderCalendar();
+      openDayView(dateStr, newTasks);
+    } catch {
+      const error = document.createElement('div');
+      error.className = 'task-error';
+      error.setAttribute('role', 'alert');
+      error.textContent = 'Change saved. Reopen the calendar to refresh it.';
+      item.appendChild(error);
+    }
+  }
+
   function renderDayView(dateStr, dayTasks) {
     const d = new Date(dateStr + 'T00:00:00');
     
@@ -663,17 +700,11 @@
       `;
       item.querySelector('.task-checkbox').addEventListener('click', async (e) => { 
         e.stopPropagation();
-        await window.quickDo.updateTask({ ...task, completed: !task.completed }); 
-        const newTasks = await getTasksForDate(dateStr);
-        renderCalendar(); 
-        openDayView(dateStr, newTasks);
+        await applyTaskAction(item, dateStr, () => window.quickDo.updateTask({ ...task, completed: !task.completed }));
       });
       item.querySelector('.delete-btn').addEventListener('click', async (e) => { 
         e.stopPropagation();
-        await window.quickDo.deleteTask(task.id); 
-        const newTasks = await getTasksForDate(dateStr);
-        renderCalendar(); 
-        openDayView(dateStr, newTasks);
+        await applyTaskAction(item, dateStr, () => window.quickDo.deleteTask(task.id));
       });
       dayViewTasks.appendChild(item);
     });
