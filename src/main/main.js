@@ -5,6 +5,7 @@
 const { app, BrowserWindow, globalShortcut, Tray, Menu, ipcMain, screen, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { randomUUID } = require('crypto');
 const Store = require('./store');
 const DateParser = require('./dateParser');
 const Scheduler = require('./scheduler');
@@ -238,7 +239,7 @@ ipcMain.handle('save-task', async (event, { text, date, exactTime }) => {
   if (!text || !date) return { success: false, error: 'Missing text or date' };
   try {
     const task = {
-      id: Date.now().toString(),
+      id: randomUUID(),
       text: text.trim(),
       date,
       exactTime: exactTime || null,
