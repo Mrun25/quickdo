@@ -36,9 +36,18 @@ class Store {
     }
   }
 
+  _isTask(task) {
+    return task !== null && typeof task === 'object' && !Array.isArray(task)
+      && typeof task.id === 'string' && task.id.length > 0
+      && typeof task.text === 'string';
+  }
+
   _readTasksForWrite() {
     const tasks = JSON.parse(fs.readFileSync(this.tasksPath, 'utf-8'));
     if (!Array.isArray(tasks)) throw new Error('Task storage must contain an array');
+    if (!tasks.every(task => this._isTask(task))) {
+      throw new Error('Task storage contains an invalid task; original file preserved');
+    }
     return tasks;
   }
 
@@ -68,7 +77,7 @@ class Store {
   getTasks() {
     try {
       const tasks = JSON.parse(fs.readFileSync(this.tasksPath, 'utf-8'));
-      return Array.isArray(tasks) ? tasks : [];
+      return Array.isArray(tasks) ? tasks.filter(task => this._isTask(task)) : [];
     } catch {
       return [];
     }

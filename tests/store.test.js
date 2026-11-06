@@ -105,3 +105,38 @@ test('reading valid tasks does not change their contents or file', () => {
   assert.equal(JSON.stringify(store.getTasks()), original);
   assert.equal(fs.readFileSync(tasksFile(), 'utf8'), original);
 });
+
+for (const invalid of [null, 42, 'task', [], {}, { id: 'bad', text: 42 }, { text: 'No id' }]) {
+  test(`malformed task entries are hidden without changing storage: ${JSON.stringify(invalid)}`, () => {
+    const good = { id: 'legacy', text: 'Keep me', completed: false };
+    const original = JSON.stringify([good, invalid]);
+    fs.writeFileSync(tasksFile(), original);
+    assert.equal(JSON.stringify(store.getTasks()), JSON.stringify([good]));
+    for (const operation of [
+      () => store.addTask({ id: 'new', text: 'New' }),
+      () => store.updateTask({ id: 'legacy', completed: true }),
+      () => store.deleteTask('legacy'),
+    ]) {
+      assert.throws(operation, /invalid task/i);
+      assert.equal(fs.readFileSync(tasksFile(), 'utf8'), original);
+    }
+  });
+}
+
+test('scheduler can read valid tasks beside malformed entries without crashing', () => {
+  const good = { id: 'legacy', text: 'Keep me', date: '2026-11-07', completed: false };
+  const original = JSON.stringify([null, good, { id: 'bad', text: 42 }]);
+  fs.writeFileSync(tasksFile(), original);
+  const module = { exports: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/main/scheduler.js'), 'utf8'), {
+    module, __dirname: path.join(__dirname, '../src/main'), Date,
+    require(name) {
+      return name === 'electron' ? { Notification: { isSupported: () => false } } : require(name);
+    },
+  });
+  const scheduler = new module.exports(store);
+  assert.doesNotThrow(() => scheduler.checkTasks());
+  assert.doesNotThrow(() => scheduler.triggerStartupSummary());
+  assert.equal(JSON.stringify(store.getTasks()), JSON.stringify([good]));
+  assert.equal(fs.readFileSync(tasksFile(), 'utf8'), original);
+});
