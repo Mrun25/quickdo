@@ -45,8 +45,9 @@ class Scheduler {
 
       // Notify future tasks within 30 minutes; tracking prevents repeats.
       if (timeDiff > 0 && timeDiff <= THIRTY_MINS) {
-        this.sendNotification('Upcoming Task in 30 mins', task.text);
-        this.notifiedTaskTimes.set(task.id, taskTime);
+        if (this.sendNotification('Upcoming Task in 30 mins', task.text)) {
+          this.notifiedTaskTimes.set(task.id, taskTime);
+        }
       }
     });
   }
@@ -71,13 +72,20 @@ class Scheduler {
   }
 
   sendNotification(title, body) {
-    if (Notification.isSupported()) {
+    // An unavailable notification service must not consume a reminder or stop
+    // the remaining tasks. A later scheduler check can retry the submission.
+    try {
+      if (!Notification.isSupported()) return false;
       const notification = new Notification({
         title,
         body,
         icon: require('path').join(__dirname, '../../assets/icon.png')
       });
       notification.show();
+      return true;
+    } catch (error) {
+      console.error('Could not submit task notification:', error);
+      return false;
     }
   }
 

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-let scheduler, tasks, notifications, intervals, cleared;
+let scheduler, tasks, notifications, intervals, cleared, supported, failNext, errors;
 const NOW = Date.parse('2026-10-28T12:00:00Z');
 const at = minutes => new Date(NOW + minutes * 60000).toISOString();
 beforeEach(() => {
@@ -12,15 +12,22 @@ beforeEach(() => {
   notifications = [];
   intervals = [];
   cleared = [];
+  supported = true;
+  failNext = false;
+  errors = [];
   const module = { exports: {} };
   class Clock extends Date { static now() { return NOW; } }
   class Notification {
-    static isSupported() { return true; }
+    static isSupported() { return supported; }
     constructor(options) { this.options = options; }
-    show() { notifications.push(this.options); }
+    show() {
+      if (failNext) { failNext = false; throw new Error('Notification unavailable'); }
+      notifications.push(this.options);
+    }
   }
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/main/scheduler.js'), 'utf8'), {
     module, __dirname: path.join(__dirname, '../src/main'), Date: Clock,
+    console: { error(...args) { errors.push(args); } },
     setInterval(callback) { intervals.push(callback); return intervals.length; },
     clearInterval(id) { cleared.push(id); },
     require(name) { return name === 'electron' ? { Notification } : require(name); },
@@ -93,4 +100,40 @@ test('starting twice keeps one interval and stopping clears it', () => {
   assert.deepEqual(cleared, [1]);
   scheduler.start();
   assert.equal(intervals.length, 2);
+});
+
+
+test('temporarily unsupported notifications do not consume the reminder', () => {
+  tasks.push({ id: 'a', text: 'Call', exactTime: at(20) });
+  supported = false;
+  scheduler.checkTasks();
+  assert.equal(scheduler.notifiedTaskTimes.size, 0);
+  supported = true;
+  scheduler.checkTasks();
+  scheduler.checkTasks();
+  assert.equal(notifications.length, 1);
+});
+
+test('a failed notification is retried without blocking other due tasks', () => {
+  tasks.push(
+    { id: 'a', text: 'First', exactTime: at(20) },
+    { id: 'b', text: 'Second', exactTime: at(20) },
+  );
+  failNext = true;
+  assert.doesNotThrow(() => scheduler.checkTasks());
+  assert.deepEqual(notifications.map(n => n.body), ['Second']);
+  assert.equal(scheduler.notifiedTaskTimes.has('a'), false);
+  scheduler.checkTasks();
+  scheduler.checkTasks();
+  assert.deepEqual(notifications.map(n => n.body), ['Second', 'First']);
+  assert.equal(errors.length, 1);
+});
+
+test('notification submission reports whether it was accepted', () => {
+  supported = false;
+  assert.equal(scheduler.sendNotification('Test', 'Body'), false);
+  supported = true;
+  assert.equal(scheduler.sendNotification('Test', 'Body'), true);
+  failNext = true;
+  assert.equal(scheduler.sendNotification('Test', 'Body'), false);
 });
